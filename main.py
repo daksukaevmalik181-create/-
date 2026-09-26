@@ -74,7 +74,4 @@ if __name__ == '__main__':
     print("Бот и WebSocket-сервер успешно запущены!")
     bot.infinity_polling()
 
-pyTelegramBotAPI==4.26.0
-fastapi==0.115.0
-uvicorn==0.30.6
-requests==2.32.3
+
