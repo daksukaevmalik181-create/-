@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Дурак Онлайн - Полноценная Версия</title>
+    <title>Настоящий Дурак Онлайн</title>
     <script src="https://telegram.org"></script>
     <style>
         body {
@@ -57,7 +57,7 @@
     <div class="game-status-tag" id="bot-status-tag">Ожидание...</div>
     <div class="cards-row" id="bot-cards"></div>
     <div class="playing-table">
-        <div class="table-placeholder" id="table-info">Нажмите кнопку ниже, чтобы начать партию</div>
+        <div class="table-placeholder" id="table-info">Нажмите кнопку ниже для раздачи карт</div>
         <div class="table-cards-container" id="table-cards"></div>
         <div id="deck-area" style="display:none;">
             <div class="card trump-card" id="trump-element"></div>
@@ -67,7 +67,8 @@
     <div class="game-status-tag" id="player-status-tag">Игрок</div>
     <div class="cards-row" id="player-cards" style="height: 90px;"></div>
     <button class="action-btn" id="action-button" onclick="handleMainAction()">НАЧАТЬ ИГРУ</button>
-        <script>
+       <script>
+        // Имя игрока из Telegram
         let telegramUserName = "Игрок";
         if (window.Telegram?.WebApp) {
             window.Telegram.WebApp.ready();
@@ -84,7 +85,13 @@
         ];
         const botNames = ["Робот Барбарис", "Робот Валера", "Робот Процессор", "Робот Сириус", "Робот Кабан"];
         let currentBotName = "Робот";
-        let deck = []; let playerHand = []; let botHand = []; let trumpSuit = null; let gameActive = false; let currentAttackCard = null;
+        
+        let deck = []; let playerHand = []; let botHand = []; let trumpSuit = null; let gameActive = false;
+        
+        // Кто сейчас атакует: 'player' или 'bot'
+        let currentTurn = 'player'; 
+        let currentAttackCard = null;
+        let currentDefenseCard = null;
 
         function createDeck() {
             deck = [];
@@ -104,36 +111,47 @@
             botHand = deck.splice(0, 6);
             let trumpCard = deck[deck.length - 1];
             trumpSuit = trumpCard.suit;
+            
             const trumpEl = document.getElementById('trump-element');
             trumpEl.className = "card " + trumpSuit.color + " trump-card";
             trumpEl.innerHTML = "<div>" + trumpCard.rank + "</div><div style='align-self:center;font-size:18px;'>" + trumpSuit.icon + "</div><div style='align-self:flex-end;transform:rotate(180deg);'>" + trumpCard.rank + "</div>";
+            
             document.getElementById('deck-area').style.display = 'block';
             document.getElementById('table-info').style.display = 'block';
-            document.getElementById('table-info').innerHTML = "Игра началась! Ваш ход.";
-            const btn = document.getElementById('action-button');
-            btn.innerHTML = "ПАС / ВЗЯТЬ";
-            btn.style.background = "linear-gradient(180deg, #fff 0%, #b0b0b0 100%)";
-            btn.style.color = "#000";
-            gameActive = true; currentAttackCard = null;
+            
+            // Всегда начинает игрок для простоты первого кона
+            currentTurn = 'player'; 
+            currentAttackCard = null;
+            currentDefenseCard = null;
+            
+            document.getElementById('table-info').innerHTML = "Игра началась! Ваш ход, выберите карту.";
+            updateActionButton();
             document.getElementById('table-cards').innerHTML = "";
             renderHands();
         }
 
         function renderHands() {
-            document.getElementById('player-status-tag').innerText = telegramUserName + " (" + playerHand.length + " шт.)";
-            document.getElementById('bot-status-tag').innerText = currentBotName + " (" + botHand.length + " шт.)";
+            // Подсвечиваем стрелочкой того, чей сейчас ход атаковать
+            let pTurnMark = (currentTurn === 'player') ? "👉 " : "";
+            let bTurnMark = (currentTurn === 'bot') ? "👉 " : "";
+            
+            document.getElementById('player-status-tag').innerText = pTurnMark + telegramUserName + " (" + playerHand.length + " шт.)";
+            document.getElementById('bot-status-tag').innerText = bTurnMark + currentBotName + " (" + botHand.length + " шт.)";
+            
             const deckCountEl = document.getElementById('deck-count-element');
             if (deck.length > 0) { deckCountEl.style.display = 'flex'; deckCountEl.innerText = deck.length; }
             else { deckCountEl.style.display = 'none'; }
+            
             const playerRow = document.getElementById('player-cards');
             playerRow.innerHTML = "";
             playerHand.forEach((card, index) => {
                 const cardEl = document.createElement('div');
                 cardEl.className = "card " + card.suit.color;
                 cardEl.innerHTML = "<div>" + card.rank + "</div><div style='align-self:center;font-size:18px;'>" + card.suit.icon + "</div><div style='align-self:flex-end;transform:rotate(180deg);'>" + card.rank + "</div>";
-                cardEl.onclick = () => playerMove(index);
+                cardEl.onclick = () => playerClickCard(index);
                 playerRow.appendChild(cardEl);
             });
+            
             const botRow = document.getElementById('bot-cards');
             botRow.innerHTML = "";
             botHand.forEach(() => {
@@ -143,23 +161,63 @@
             });
         }
 
-        function playerMove(cardIndex) {
-            if (!gameActive || currentAttackCard !== null) return;
-            const card = playerHand[cardIndex];
-            playerHand.splice(cardIndex, 1);
-            currentAttackCard = card;
-            document.getElementById('table-info').style.display = 'none';
-            const tableCards = document.getElementById('table-cards');
-            tableCards.innerHTML = "";
-            const cardEl = document.createElement('div');
-            cardEl.className = "card " + card.suit.color;
-            cardEl.style.marginLeft = "0";
-            cardEl.innerHTML = "<div>" + card.rank + "</div><div style='align-self:center;font-size:18px;'>" + card.suit.icon + "</div><div style='align-self:flex-end;transform:rotate(180deg);'>" + card.rank + "</div>";
-            tableCards.appendChild(cardEl);
-            renderHands();
-            setTimeout(botDefense, 800);
+        function playerClickCard(cardIndex) {
+            if (!gameActive) return;
+            
+            // СИТУАЦИЯ 1: Ход игрока (Игрок атакует)
+            if (currentTurn === 'player') {
+                if (currentAttackCard !== null) return; // Нельзя ходить двумя
+                
+                const card = playerHand[cardIndex];
+                playerHand.splice(cardIndex, 1);
+                currentAttackCard = card;
+                
+                document.getElementById('table-info').style.display = 'none';
+                const tableCards = document.getElementById('table-cards');
+                tableCards.innerHTML = "";
+                
+                const cardEl = document.createElement('div');
+                cardEl.className = "card " + card.suit.color;
+                cardEl.style.marginLeft = "0";
+                cardEl.innerHTML = "<div>" + card.rank + "</div><div style='align-self:center;font-size:18px;'>" + card.suit.icon + "</div><div style='align-self:flex-end;transform:rotate(180deg);'>" + card.rank + "</div>";
+                tableCards.appendChild(cardEl);
+                
+                renderHands();
+                updateActionButton();
+                setTimeout(botDefenseLogic, 1000); // Робот защищается через 1 сек
+            }
+            // СИТУАЦИЯ 2: Ход бота (Игрок защищается от карты бота)
+            else if (currentTurn === 'bot') {
+                if (currentAttackCard === null || currentDefenseCard !== null) return;
+                
+                const card = playerHand[cardIndex];
+                let canBeat = false;
+                
+                // Проверяем правила отбития
+                if (card.suit.icon === currentAttackCard.suit.icon && ranks[card.rank] > ranks[currentAttackCard.rank]) { canBeat = true; }
+                if (currentAttackCard.suit.icon !== trumpSuit.icon && card.suit.icon === trumpSuit.icon) { canBeat = true; }
+                
+                if (canBeat) {
+                    playerHand.splice(cardIndex, 1);
+                    currentDefenseCard = card;
+                    
+                    const tableCards = document.getElementById('table-cards');
+                    const cardEl = document.createElement('div');
+                    cardEl.className = "card " + card.suit.color;
+                    cardEl.style.marginLeft = "-25px";
+                    cardEl.style.transform = "translateY(15px) rotate(8deg)";
+                    cardEl.innerHTML = "<div>" + card.rank + "</div><div style='align-self:center;font-size:18px;'>" + card.suit.icon + "</div><div style='align-self:flex-end;transform:rotate(180deg);'>" + card.rank + "</div>";
+                    tableCards.appendChild(cardEl);
+                    
+                    renderHands();
+                    updateActionButton();
+                } else {
+                    alert("Этой картой нельзя побить!");
+                }
+            }
         }
-                   function botDefense() {
+                      // Защита ИИ робота, когда вы ходите под него
+        function botDefenseLogic() {
             let defenseCardIndex = -1; let bestWeight = 999;
             for (let i = 0; i < botHand.length; i++) {
                 const card = botHand[i]; let canBeat = false;
@@ -174,65 +232,116 @@
             if (defenseCardIndex !== -1) {
                 const defCard = botHand[defenseCardIndex];
                 botHand.splice(defenseCardIndex, 1);
+                currentDefenseCard = defCard;
                 const cardEl = document.createElement('div');
-                cardEl.className = "card " + defCard.suit.color;
-                cardEl.style.marginLeft = "-25px"; cardEl.style.transform = "translateY(15px) rotate(8deg)";
+                cardEl.className = "card " + defCard.suit.color; cardEl.style.marginLeft = "-25px"; cardEl.style.transform = "translateY(15px) rotate(8deg)";
                 cardEl.innerHTML = "<div>" + defCard.rank + "</div><div style='align-self:center;font-size:18px;'>" + defCard.suit.icon + "</div><div style='align-self:flex-end;transform:rotate(180deg);'>" + defCard.rank + "</div>";
                 tableCards.appendChild(cardEl);
                 renderHands();
-                document.getElementById('action-button').innerHTML = "БИТО (Следующий кон)";
             } else {
-                document.getElementById('action-button').innerHTML = "БОТ ЗАБИРАЕТ (Завершить)";
+                currentDefenseCard = null; // Робот не смог отбиться
+            }
+            updateActionButton();
+        }
+
+        // Логика атаки робота, когда ход переходит к нему
+        function botAttackLogic() {
+            if (!gameActive || botHand.length === 0) return;
+            let bestCardIndex = 0; let bestWeight = 999;
+            for (let i = 0; i < botHand.length; i++) {
+                const card = botHand[i];
+                let weight = ranks[card.rank] + (card.suit.icon === trumpSuit.icon ? 20 : 0);
+                if (weight < bestWeight) { bestWeight = weight; bestCardIndex = i; }
+            }
+            const attackCard = botHand[bestCardIndex];
+            botHand.splice(bestCardIndex, 1);
+            currentAttackCard = attackCard; currentDefenseCard = null;
+            document.getElementById('table-info').style.display = 'none';
+            const tableCards = document.getElementById('table-cards'); tableCards.innerHTML = "";
+            const cardEl = document.createElement('div');
+            cardEl.className = "card " + attackCard.suit.color; cardEl.style.marginLeft = "0";
+            cardEl.innerHTML = "<div>" + attackCard.rank + "</div><div style='align-self:center;font-size:18px;'>" + attackCard.suit.icon + "</div><div style='align-self:flex-end;transform:rotate(180deg);'>" + attackCard.rank + "</div>";
+            tableCards.appendChild(cardEl);
+            renderHands(); updateActionButton();
+        }
+
+        // Обновление текста и цвета главной кнопки
+        function updateActionButton() {
+            const btn = document.getElementById('action-button');
+            if (!gameActive) { btn.innerHTML = "НАЧАТЬ ИГРУ"; btn.style.background = ""; btn.style.color = ""; return; }
+            if (currentTurn === 'player') {
+                if (currentAttackCard === null) { btn.innerHTML = "ПАС / ХОДИТЕ КАРТОЙ"; btn.style.background = "#b0b0b0"; }
+                else if (currentDefenseCard !== null) { btn.innerHTML = "БИТО (Завершить кон)"; btn.style.background = "#2ec753"; btn.style.color = "#fff"; }
+                else { btn.innerHTML = "БОТ ДУМАЕТ..."; btn.style.background = "#b0b0b0"; }
+            } else if (currentTurn === 'bot') {
+                if (currentAttackCard === null) { btn.innerHTML = "ОЖИДАНИЕ ХОДА БОТА"; btn.style.background = "#b0b0b0"; }
+                else if (currentDefenseCard !== null) { btn.innerHTML = "БИТО (Вы отбились)"; btn.style.background = "#2ec753"; btn.style.color = "#fff"; }
+                else { btn.innerHTML = "ВЗЯТЬ КАРТУ БОТА"; btn.style.background = "#e53935"; btn.style.color = "#fff"; }
             }
         }
 
+        // Нажатие на главную кнопку
         function handleMainAction() {
             if (!gameActive) { startNewGame(); return; }
             const btnText = document.getElementById('action-button').innerHTML;
             const tableCards = document.getElementById('table-cards');
-            if (btnText.includes("БИТО")) {
-                tableCards.innerHTML = "";
+            
+            // ПРАВИЛО 1: Вы атаковали, бот отбился, карты уходят в отбой. ХОД ПЕРЕХОДИТ К БОТУ!
+            if (currentTurn === 'player' && btnText.includes("БИТО")) {
+                tableCards.innerHTML = ""; currentAttackCard = null; currentDefenseCard = null;
                 document.getElementById('table-info').style.display = 'block';
-                document.getElementById('table-info').innerHTML = "Бито! Ваши карты ушли в отбой. Ваш ход.";
-                currentAttackCard = null;
-                document.getElementById('action-button').innerHTML = "ПАС / ВЗЯТЬ";
-                refillHands();
-            } else if (btnText.includes("ЗАБИРАЕТ")) {
-                botHand.push(currentAttackCard);
-                tableCards.innerHTML = "";
-                document.getElementById('table-info').style.display = 'block';
-                document.getElementById('table-info').innerHTML = currentBotName + " забрал карты. Вы ходите снова!";
-                currentAttackCard = null;
-                document.getElementById('action-button').innerHTML = "ПАС / ВЗЯТЬ";
-                refillHands();
+                document.getElementById('table-info').innerHTML = "Бито! Ход переходит к сопернику.";
+                refillHands(); checkVictory();
+                if (gameActive) { currentTurn = 'bot'; renderHands(); setTimeout(botAttackLogic, 1200); }
             }
-            checkVictory();
+            // ПРАВИЛО 2: Вы атаковали, бот забрал карту. ХОД ОСТАЕТСЯ У ВАС!
+            else if (currentTurn === 'player' && btnText.includes("ЗАБИРАЕТ")) {
+                botHand.push(currentAttackCard); tableCards.innerHTML = "";
+                currentAttackCard = null; currentDefenseCard = null;
+                document.getElementById('table-info').style.display = 'block';
+                document.getElementById('table-info').innerHTML = currentBotName + " забрал. Вы ходите снова!";
+                refillHands(); checkVictory(); renderHands(); updateActionButton();
+            }
+            // ПРАВИЛО 3: Бот атаковал, вы успешно отбились. ХОД ПЕРЕХОДИТ К ВАМ!
+            else if (currentTurn === 'bot' && btnText.includes("Вы отбились")) {
+                tableCards.innerHTML = ""; currentAttackCard = null; currentDefenseCard = null;
+                document.getElementById('table-info').style.display = 'block';
+                document.getElementById('table-info').innerHTML = "Бито! Ваш ход, выберите карту.";
+                refillHands(); checkVictory(); if (gameActive) { currentTurn = 'player'; renderHands(); updateActionButton(); }
+            }
+            // ПРАВИЛО 4: Бот атаковал, вы не смогли отбиться и берете. ХОД ОСТАЕТСЯ У БОТА!
+            else if (currentTurn === 'bot' && btnText.includes("ВЗЯТЬ КАРТУ")) {
+                playerHand.push(currentAttackCard); tableCards.innerHTML = "";
+                currentAttackCard = null; currentDefenseCard = null;
+                document.getElementById('table-info').style.display = 'block';
+                document.getElementById('table-info').innerHTML = "Вы взяли карту. " + currentBotName + " ходит снова!";
+                refillHands(); checkVictory();
+                if (gameActive) { renderHands(); setTimeout(botAttackLogic, 1200); }
+            }
         }
 
         function refillHands() {
             while (playerHand.length < 6 && deck.length > 0) { playerHand.push(deck.shift()); }
             while (botHand.length < 6 && deck.length > 0) { botHand.push(deck.shift()); }
-            renderHands();
         }
 
         function checkVictory() {
             if (deck.length === 0) {
                 if (playerHand.length === 0 && botHand.length === 0) { alert("Ничья!"); resetGame(); }
-                else if (playerHand.length === 0) { alert("🎉 ПОЗДРАВЛЯЕМ! Вы обыграли " + currentBotName + "!"); resetGame(); }
-                else if (botHand.length === 0) { alert("❌ Вы проиграли! " + currentBotName + " выиграл."); resetGame(); }
+                else if (playerHand.length === 0) { alert("🎉 ПОБЕДА! Вы оставили робота в дураках!"); resetGame(); }
+                else if (botHand.length === 0) { alert("❌ Вы проиграли! Робот обыграл вас."); resetGame(); }
             }
         }
 
         function resetGame() {
-            gameActive = false;
-            document.getElementById('deck-area').style.display = 'none';
-            document.getElementById('table-cards').innerHTML = "";
-            document.getElementById('table-info').style.display = 'block';
+            gameActive = false; document.getElementById('deck-area').style.display = 'none';
+            document.getElementById('table-cards').innerHTML = ""; document.getElementById('table-info').style.display = 'block';
             document.getElementById('table-info').innerHTML = "Партия завершена. Нажмите кнопку для новой игры.";
-            document.getElementById('action-button').innerHTML = "НАЧАТЬ ИГРУ";
-            document.getElementById('action-button').style.background = "linear-gradient(180deg, #ffe047 0%, #f1b600 100%)";
-            document.getElementById('action-button').style.color = "#422100";
-            playerHand = []; botHand = []; renderHands();
+            playerHand = []; botHand = []; renderHands(); updateActionButton();
+        }
+
+        if (window.Telegram?.WebApp) {
+            window.Telegram.WebApp.ready(); window.Telegram.WebApp.expand();
         }
     </script>
 </body>
