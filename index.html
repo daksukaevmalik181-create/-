@@ -6,48 +6,19 @@
     <title>Настоящий Дурак Онлайн</title>
     <script src="https://telegram.org"></script>
     <style>
-        body {
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: #142617;
-            color: #ffffff;
-            margin: 0;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-between;
-            min-height: 94vh;
-            overflow: hidden;
-            user-select: none;
-        }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #142617; color: #fff; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; min-height: 94vh; overflow: hidden; user-select: none; }
         .game-title { font-size: 20px; font-weight: bold; color: #ffd700; margin-top: 5px; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); }
         .cards-row { display: flex; justify-content: center; width: 100%; height: 85px; margin: 5px 0; min-height: 85px; }
-        .playing-table {
-            border: 3px dashed #3a6b43; background-color: #1a3c22; border-radius: 20px;
-            width: 92%; max-width: 365px; height: 200px; display: flex;
-            align-items: center; justify-content: center; position: relative;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
-        }
+        .playing-table { border: 3px dashed #3a6b43; background-color: #1a3c22; border-radius: 20px; width: 92%; max-width: 365px; height: 200px; display: flex; align-items: center; justify-content: center; position: relative; box-shadow: inset 0 0 20px rgba(0,0,0,0.6); }
         .table-placeholder { color: #82b98b; font-size: 14px; text-align: center; padding: 15px; z-index: 5; font-weight: bold; }
-        .card {
-            width: 52px; height: 78px; background-color: white; border-radius: 6px;
-            box-shadow: 2px 2px 7px rgba(0,0,0,0.4); display: flex; flex-direction: column;
-            justify-content: space-between; padding: 5px; box-sizing: border-box;
-            font-weight: bold; font-size: 14px; margin-left: -18px; transition: all 0.3s ease;
-            position: relative; cursor: pointer;
-        }
+        .card { width: 52px; height: 78px; background-color: white; border-radius: 6px; box-shadow: 2px 2px 7px rgba(0,0,0,0.4); display: flex; flex-direction: column; justify-content: space-between; padding: 5px; box-sizing: border-box; font-weight: bold; font-size: 14px; margin-left: -18px; transition: all 0.3s ease; position: relative; cursor: pointer; }
         .card:first-child { margin-left: 0; }
         .card.back { background: linear-gradient(135deg, #d4af37 0%, #aa7c11 100%); border: 2px solid white; cursor: default; }
         .red { color: #e53935; } .black { color: #212121; }
         .trump-card { position: absolute; right: 10px; top: 60px; transform: rotate(90deg); z-index: 1; }
         .deck-back { position: absolute; right: 16px; top: 60px; z-index: 2; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; text-shadow: 1px 1px 2px black; }
         .table-cards-container { display: flex; gap: 15px; z-index: 6; position: absolute; justify-content: center; width: 80%; }
-        .action-btn {
-            background: linear-gradient(180deg, #ffe047 0%, #f1b600 100%); color: #422100;
-            border: none; border-radius: 12px; padding: 12px 0; font-size: 16px; font-weight: bold;
-            cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.4); width: 90%; max-width: 340px;
-            margin-bottom: 5px; text-align: center;
-        }
+        .action-btn { background: linear-gradient(180deg, #ffe047 0%, #f1b600 100%); color: #422100; border: none; border-radius: 12px; padding: 12px 0; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.4); width: 90%; max-width: 340px; margin-bottom: 5px; text-align: center; }
         .action-btn:active { transform: scale(0.98); }
         .game-status-tag { background: rgba(0,0,0,0.4); padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-bottom: 2px; }
     </style>
@@ -67,76 +38,143 @@
     <div class="game-status-tag" id="player-status-tag">Игрок</div>
     <div class="cards-row" id="player-cards" style="height: 90px;"></div>
     <button class="action-btn" id="action-button" onclick="handleMainAction()">НАЧАТЬ ИГРУ</button>
-    <!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Настоящий Дурак Онлайн</title>
-    <script src="https://telegram.org"></script>
-    <style>
-        body {
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: #142617;
-            color: #ffffff;
-            margin: 0;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-between;
-            min-height: 94vh;
-            overflow: hidden;
-            user-select: none;
+        <script>
+        let telegramUserName = "Игрок";
+        if (window.Telegram?.WebApp) {
+            window.Telegram.WebApp.ready();
+            window.Telegram.WebApp.expand();
+            if (window.Telegram.WebApp.initDataUnsafe?.user?.first_name) {
+                telegramUserName = window.Telegram.WebApp.initDataUnsafe.user.first_name;
+            }
         }
-        .game-title { font-size: 20px; font-weight: bold; color: #ffd700; margin-top: 5px; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); }
-        .cards-row { display: flex; justify-content: center; width: 100%; height: 85px; margin: 5px 0; min-height: 85px; }
-        .playing-table {
-            border: 3px dashed #3a6b43; background-color: #1a3c22; border-radius: 20px;
-            width: 92%; max-width: 365px; height: 200px; display: flex;
-            align-items: center; justify-content: center; position: relative;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+
+        const ranks = {'6':6, '7':7, '8':8, '9':9, '10':10, 'J':11, 'Q':12, 'K':13, 'A':14};
+        const suits = [
+            {'icon':'♠','color':'black'}, {'icon':'♣','color':'black'}, 
+            {'icon':'♦','color':'red'}, {'icon':'♥','color':'red'}
+        ];
+        const botNames = ["Робот Барбарис", "Робот Валера", "Робот Процессор", "Робот Сириус", "Робот Кабан"];
+        let currentBotName = "Робот";
+        
+        let deck = []; let playerHand = []; let botHand = []; let trumpSuit = null; let gameActive = false;
+        let currentTurn = 'player'; 
+        let currentAttackCard = null; let currentDefenseCard = null;
+
+        function createDeck() {
+            deck = [];
+            for (let suit of suits) {
+                for (let rank in ranks) { deck.push({ rank: rank, suit: suit }); }
+            }
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
         }
-        .table-placeholder { color: #82b98b; font-size: 14px; text-align: center; padding: 15px; z-index: 5; font-weight: bold; }
-        .card {
-            width: 52px; height: 78px; background-color: white; border-radius: 6px;
-            box-shadow: 2px 2px 7px rgba(0,0,0,0.4); display: flex; flex-direction: column;
-            justify-content: space-between; padding: 5px; box-sizing: border-box;
-            font-weight: bold; font-size: 14px; margin-left: -18px; transition: all 0.3s ease;
-            position: relative; cursor: pointer;
+
+        function startNewGame() {
+            createDeck();
+            currentBotName = botNames[Math.floor(Math.random() * botNames.length)];
+            playerHand = deck.splice(0, 6);
+            botHand = deck.splice(0, 6);
+            let trumpCard = deck[deck.length - 1];
+            trumpSuit = trumpCard.suit;
+            
+            const trumpEl = document.getElementById('trump-element');
+            trumpEl.className = "card " + trumpSuit.color + " trump-card";
+            trumpEl.innerHTML = "<div>" + trumpCard.rank + "</div><div style='align-self:center;font-size:18px;'>" + trumpSuit.icon + "</div><div style='align-self:flex-end;transform:rotate(180deg);'>" + trumpCard.rank + "</div>";
+            
+            document.getElementById('deck-area').style.display = 'block';
+            document.getElementById('table-info').style.display = 'none';
+            
+            currentTurn = 'player'; 
+            currentAttackCard = null; currentDefenseCard = null;
+            
+            updateActionButton();
+            document.getElementById('table-cards').innerHTML = "";
+            renderHands();
         }
-        .card:first-child { margin-left: 0; }
-        .card.back { background: linear-gradient(135deg, #d4af37 0%, #aa7c11 100%); border: 2px solid white; cursor: default; }
-        .red { color: #e53935; } .black { color: #212121; }
-        .trump-card { position: absolute; right: 10px; top: 60px; transform: rotate(90deg); z-index: 1; }
-        .deck-back { position: absolute; right: 16px; top: 60px; z-index: 2; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; text-shadow: 1px 1px 2px black; }
-        .table-cards-container { display: flex; gap: 15px; z-index: 6; position: absolute; justify-content: center; width: 80%; }
-        .action-btn {
-            background: linear-gradient(180deg, #ffe047 0%, #f1b600 100%); color: #422100;
-            border: none; border-radius: 12px; padding: 12px 0; font-size: 16px; font-weight: bold;
-            cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.4); width: 90%; max-width: 340px;
-            margin-bottom: 5px; text-align: center;
+                   function renderHands() {
+            let pTurnMark = (currentTurn === 'player') ? "👉 " : "";
+            let bTurnMark = (currentTurn === 'bot') ? "👉 " : "";
+            
+            document.getElementById('player-status-tag').innerText = pTurnMark + telegramUserName + " (" + playerHand.length + " шт.)";
+            document.getElementById('bot-status-tag').innerText = bTurnMark + currentBotName + " (" + botHand.length + " шт.)";
+            
+            const deckCountEl = document.getElementById('deck-count-element');
+            if (deck.length > 0) { deckCountEl.style.display = 'flex'; deckCountEl.innerText = deck.length; }
+            else { deckCountEl.style.display = 'none'; }
+            
+            const playerRow = document.getElementById('player-cards');
+            playerRow.innerHTML = "";
+            playerHand.forEach((card, index) => {
+                const cardEl = document.createElement('div');
+                cardEl.className = "card " + card.suit.color;
+                cardEl.innerHTML = "<div>" + card.rank + "</div><div style='align-self:center;font-size:18px;'>" + card.suit.icon + "</div><div style='align-self:flex-end;transform:rotate(180deg);'>" + card.rank + "</div>";
+                cardEl.onclick = () => playerClickCard(index);
+                playerRow.appendChild(cardEl);
+            });
+            
+            const botRow = document.getElementById('bot-cards');
+            botRow.innerHTML = "";
+            botHand.forEach(() => {
+                const cardEl = document.createElement('div');
+                cardEl.className = "card back";
+                botRow.appendChild(cardEl);
+            });
         }
-        .action-btn:active { transform: scale(0.98); }
-        .game-status-tag { background: rgba(0,0,0,0.4); padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-bottom: 2px; }
-    </style>
-</head>
-<body>
-    <div class="game-title">🃏 ДУРАК CLUB</div>
-    <div class="game-status-tag" id="bot-status-tag">Ожидание...</div>
-    <div class="cards-row" id="bot-cards"></div>
-    <div class="playing-table">
-        <div class="table-placeholder" id="table-info">Нажмите кнопку ниже для раздачи карт</div>
-        <div class="table-cards-container" id="table-cards"></div>
-        <div id="deck-area" style="display:none;">
-            <div class="card trump-card" id="trump-element"></div>
-            <div class="card back deck-back" id="deck-count-element">24</div>
-        </div>
-    </div>
-    <div class="game-status-tag" id="player-status-tag">Игрок</div>
-    <div class="cards-row" id="player-cards" style="height: 90px;"></div>
-    <button class="action-btn" id="action-button" onclick="handleMainAction()">НАЧАТЬ ИГРУ</button>
-            function botDefenseLogic() {
+
+        function playerClickCard(cardIndex) {
+            if (!gameActive) return;
+            
+            if (currentTurn === 'player') {
+                if (currentAttackCard !== null) return;
+                
+                const card = playerHand[cardIndex];
+                playerHand.splice(cardIndex, 1);
+                currentAttackCard = card;
+                
+                const tableCards = document.getElementById('table-cards');
+                tableCards.innerHTML = "";
+                
+                const cardEl = document.createElement('div');
+                cardEl.className = "card " + card.suit.color;
+                cardEl.style.marginLeft = "0";
+                cardEl.innerHTML = "<div>" + card.rank + "</div><div style='align-self:center;font-size:18px;'>" + card.suit.icon + "</div><div style='align-self:flex-end;transform:rotate(180deg);'>" + card.rank + "</div>";
+                tableCards.appendChild(cardEl);
+                
+                renderHands();
+                updateActionButton();
+                setTimeout(botDefenseLogic, 1000);
+            }
+            else if (currentTurn === 'bot') {
+                if (currentAttackCard === null || currentDefenseCard !== null) return;
+                
+                const card = playerHand[cardIndex];
+                let canBeat = false;
+                
+                if (card.suit.icon === currentAttackCard.suit.icon && ranks[card.rank] > ranks[currentAttackCard.rank]) { canBeat = true; }
+                if (currentAttackCard.suit.icon !== trumpSuit.icon && card.suit.icon === trumpSuit.icon) { canBeat = true; }
+                
+                if (canBeat) {
+                    playerHand.splice(cardIndex, 1);
+                    currentDefenseCard = card;
+                    
+                    const tableCards = document.getElementById('table-cards');
+                    const cardEl = document.createElement('div');
+                    cardEl.className = "card " + card.suit.color;
+                    cardEl.style.marginLeft = "-25px";
+                    cardEl.style.transform = "translateY(15px) rotate(8deg)";
+                    cardEl.innerHTML = "<div>" + card.rank + "</div><div style='align-self:center;font-size:18px;'>" + card.suit.icon + "</div><div style='align-self:flex-end;transform:rotate(180deg);'>" + card.rank + "</div>";
+                    tableCards.appendChild(cardEl);
+                    
+                    renderHands();
+                    updateActionButton();
+                } else {
+                    alert("Этой картой нельзя побить!");
+                }
+            }
+        }
+                        function botDefenseLogic() {
             let defenseCardIndex = -1; let bestWeight = 999;
             for (let i = 0; i < botHand.length; i++) {
                 const card = botHand[i]; let canBeat = false;
@@ -174,7 +212,6 @@
             const attackCard = botHand[bestCardIndex];
             botHand.splice(bestCardIndex, 1);
             currentAttackCard = attackCard; currentDefenseCard = null;
-            document.getElementById('table-info').style.display = 'none';
             const tableCards = document.getElementById('table-cards'); tableCards.innerHTML = "";
             const cardEl = document.createElement('div');
             cardEl.className = "card " + attackCard.suit.color; cardEl.style.marginLeft = "0";
@@ -184,44 +221,15 @@
         }
                    function updateActionButton() {
             const btn = document.getElementById('action-button');
-            if (!gameActive) { 
-                btn.innerHTML = "НАЧАТЬ ИГРУ"; 
-                btn.style.background = "linear-gradient(180deg, #ffe047 0%, #f1b600 100%)"; 
-                btn.style.color = "#422100"; 
-                return; 
-            }
+            if (!gameActive) { btn.innerHTML = "НАЧАТЬ ИГРУ"; btn.style.background = "linear-gradient(180deg, #ffe047 0%, #f1b600 100%)"; btn.style.color = "#422100"; return; }
             if (currentTurn === 'player') {
-                if (currentAttackCard === null) { 
-                    btn.innerHTML = "ПАС / ХОДИТЕ КАРТОЙ"; 
-                    btn.style.background = "#555555"; 
-                    btn.style.color = "#ffffff";
-                }
-                else if (currentDefenseCard !== null) { 
-                    btn.innerHTML = "БИТО (Завершить кон)"; 
-                    btn.style.background = "#2ec753"; 
-                    btn.style.color = "#ffffff"; 
-                }
-                else { 
-                    btn.innerHTML = "БОТ ДУМАЕТ..."; 
-                    btn.style.background = "#555555"; 
-                    btn.style.color = "#ffffff";
-                }
+                if (currentAttackCard === null) { btn.innerHTML = "ВАШ ХОД (Выберите карту)"; btn.style.background = "#555555"; btn.style.color = "#fff"; }
+                else if (currentDefenseCard !== null) { btn.innerHTML = "БИТО (Ход к боту)"; btn.style.background = "#2ec753"; btn.style.color = "#fff"; }
+                else { btn.innerHTML = "БОТ ДУМАЕТ..."; btn.style.background = "#555555"; btn.style.color = "#fff"; }
             } else if (currentTurn === 'bot') {
-                if (currentAttackCard === null) { 
-                    btn.innerHTML = "ОЖИДАНИЕ ХОДА БОТА"; 
-                    btn.style.background = "#555555"; 
-                    btn.style.color = "#ffffff";
-                }
-                else if (currentDefenseCard !== null) { 
-                    btn.innerHTML = "БИТО (Вы отбились)"; 
-                    btn.style.background = "#2ec753"; 
-                    btn.style.color = "#ffffff"; 
-                }
-                else { 
-                    btn.innerHTML = "ВЗЯТЬ КАРТУ БОТА"; 
-                    btn.style.background = "#e53935"; 
-                    btn.style.color = "#ffffff"; 
-                }
+                if (currentAttackCard === null) { btn.innerHTML = "ОЖИДАНИЕ ХОДА БОТА"; btn.style.background = "#555555"; btn.style.color = "#fff"; }
+                else if (currentDefenseCard !== null) { btn.innerHTML = "БИТО (Вы отбились!)"; btn.style.background = "#2ec753"; btn.style.color = "#fff"; }
+                else { btn.innerHTML = "ВЗЯТЬ КАРТУ РОБОТА"; btn.style.background = "#e53935"; btn.style.color = "#fff"; }
             }
         }
 
@@ -232,29 +240,21 @@
             
             if (currentTurn === 'player' && btnText.includes("БИТО")) {
                 tableCards.innerHTML = ""; currentAttackCard = null; currentDefenseCard = null;
-                document.getElementById('table-info').style.display = 'block';
-                document.getElementById('table-info').innerHTML = "Бито! Ход переходит к сопернику.";
                 refillHands(); checkVictory();
                 if (gameActive) { currentTurn = 'bot'; renderHands(); setTimeout(botAttackLogic, 1200); }
             }
-            else if (currentTurn === 'player' && btnText.includes("ЗАБИРАЕТ")) {
+            else if (currentTurn === 'player' && currentAttackCard !== null && currentDefenseCard === null) {
                 botHand.push(currentAttackCard); tableCards.innerHTML = "";
                 currentAttackCard = null; currentDefenseCard = null;
-                document.getElementById('table-info').style.display = 'block';
-                document.getElementById('table-info').innerHTML = currentBotName + " забрал. Вы ходите снова!";
                 refillHands(); checkVictory(); renderHands(); updateActionButton();
             }
             else if (currentTurn === 'bot' && btnText.includes("Вы отбились")) {
                 tableCards.innerHTML = ""; currentAttackCard = null; currentDefenseCard = null;
-                document.getElementById('table-info').style.display = 'block';
-                document.getElementById('table-info').innerHTML = "Бито! Ваш ход, выберите карту.";
                 refillHands(); checkVictory(); if (gameActive) { currentTurn = 'player'; renderHands(); updateActionButton(); }
             }
             else if (currentTurn === 'bot' && btnText.includes("ВЗЯТЬ КАРТУ")) {
                 playerHand.push(currentAttackCard); tableCards.innerHTML = "";
                 currentAttackCard = null; currentDefenseCard = null;
-                document.getElementById('table-info').style.display = 'block';
-                document.getElementById('table-info').innerHTML = "Вы взяли карту. " + currentBotName + " ходит снова!";
                 refillHands(); checkVictory();
                 if (gameActive) { renderHands(); setTimeout(botAttackLogic, 1200); }
             }
@@ -268,20 +268,15 @@
         function checkVictory() {
             if (deck.length === 0) {
                 if (playerHand.length === 0 && botHand.length === 0) { alert("Ничья!"); resetGame(); }
-                else if (playerHand.length === 0) { alert("🎉 ПОЗДРАВЛЯЕМ! Вы обыграли " + currentBotName + "!"); resetGame(); }
-                else if (botHand.length === 0) { alert("❌ Вы проиграли! " + currentBotName + " выиграл."); resetGame(); }
+                else if (playerHand.length === 0) { alert("🎉 ПОЗДРАВЛЯЕМ! Вы выиграли!"); resetGame(); }
+                else if (botHand.length === 0) { alert("❌ Вы проиграли! Робот оставил вас в дураках."); resetGame(); }
             }
         }
 
         function resetGame() {
             gameActive = false; document.getElementById('deck-area').style.display = 'none';
-            document.getElementById('table-cards').innerHTML = ""; document.getElementById('table-info').style.display = 'block';
-            document.getElementById('table-info').innerHTML = "Партия завершена. Нажмите кнопку для новой игры.";
+            document.getElementById('table-cards').innerHTML = ""; 
             playerHand = []; botHand = []; renderHands(); updateActionButton();
-        }
-
-        if (window.Telegram?.WebApp) {
-            window.Telegram.WebApp.ready(); window.Telegram.WebApp.expand();
         }
     </script>
 </body>
