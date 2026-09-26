@@ -1,21 +1,28 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-import asyncio
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from threading import Thread
 
-# --- НАСТРОЙКИ ---
 TOKEN = "8904347494:AAFwBS6gYABYaw-Q3Vj94tDmCZRxJPGSdx0"
-SHORT_APP_URL = "https://t.me/go_durak_bot/start_durak"
+SHORT_APP_URL = "https://t.me"
 
 bot = telebot.TeleBot(TOKEN)
 app = FastAPI()
 
-# Хранилище активных игроков в комнате: { websocket: user_id }
-connected_players = {}
+# Разрешаем сайту Netlify делать запросы к нашему серверу
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# --- БОТ В ТЕЛЕГРАМ ---
+# Память сервера: храним последний сделанный ход
+game_state = {"last_move": "Ходов пока нет. Сделайте первый ход!"}
+
 @bot.message_handler(func=lambda message: message.text in ['!игра', '/play', '/play@go_durak_bot', '/start'])
 def send_game_link(message):
     markup = InlineKeyboardMarkup()
@@ -23,55 +30,30 @@ def send_game_link(message):
     markup.add(button)
     
     text = (
-        f"🎮 <b>{message.from_user.first_name}</b> создал игровой стол в Дурака!\n\n"
-        f"Ребята, нажимайте на кнопку ниже, чтобы зайти в эту комнату и начать игру 👇"
+        f"🎮 <b>{message.from_user.first_name}</b> создал стол в Дурака!\n\n"
+        f"Нажимайте на кнопку ниже, чтобы зайти в игру 👇"
     )
     bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode='HTML')
 
-# --- WEBSOCKET СЕРВЕР ДЛЯ ИГРЫ В РЕАЛЬНОМ ВРЕМЕНИ ---
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    # При подключении генерируем временный ID игрока (или получаем из Telegram)
-    player_id = f"Игрок_{len(connected_players) + 1}"
-    connected_players[websocket] = player_id
-    
-    print(self_info := f" Подключился {player_id}")
-    
-    # Оповещаем всех, сколько человек за столом
-    await broadcast({"type": "info", "message": f"За стол сел: {player_id}. Всего игроков: {len(connected_players)}"})
+# Эндпоинт 1: Принять ход от игрока
+@app.post("/play")
+async def play_card(request: Request):
+    data = await request.json()
+    card = data.get("card", "Неизвестная карта")
+    game_state["last_move"] = f"Кто-то походил картой:<br><span style='font-size:24px; color:yellow;'>{card}</span>"
+    return {"status": "success"}
 
-    try:
-        while True:
-            # Ждем действий от игрока (кликов по картам)
-            data = await websocket.receive_json()
-            
-            if data.get("type") == "play_card":
-                # Пересылаем ход сопернику, чтобы у него на экране тоже отобразилась карта
-                await broadcast({
-                    "type": "card_played",
-                    "player": player_id,
-                    "card": data.get("card")
-                })
-    except WebSocketDisconnect:
-        del connected_players[websocket]
-        print(f"❌ Отключился {player_id}")
-        await broadcast({"type": "info", "message": f"{player_id} покинул стол."})
+# Эндпоинт 2: Отдать текущее состояние стола на экран
+@app.get("/state")
+async def get_state():
+    return {"message": game_state["last_move"]}
 
-async def broadcast(message: dict):
-    if connected_players:
-        await asyncio.gather(*[ws.send_json(message) for ws in connected_players])
-
-# Функция запуска FastAPI в отдельном потоке
 def run_fastapi():
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 if __name__ == '__main__':
-    # Запускаем WebSocket сервер на порту 8000
     Thread(target=run_fastapi, daemon=True).start()
-    
-    # Запускаем Телеграм-бота
-    print("Бот и WebSocket-сервер успешно запущены!")
-    bot.infinity_polling()
+    print("Бот запущен на надежных HTTP запросах!")
+    bot.infinity_polling(drop_pending_updates=True)
 
 
